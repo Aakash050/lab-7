@@ -175,21 +175,19 @@ statement in order to create a `length_scaled` variable.
 
 ```{r}
 #| label: compare-original-with-rescaled-lengths
-#| ncol: 2
-  ggplot(BlackfootFish,
-         aes(x = length)) + 
-  geom_histogram(binwidth = 45) +
-  labs(x = "Original Values of Fish Length (mm)") +
-  scale_y_continuous(limits = c(0,4000))
+#| layout-ncol: 2
+  ggplot(BlackfootFish, aes(x = length)) + 
+  geom_histogram(binwidth = 45) + 
+  labs(x = "Original Values of Fish Length (mm)") + 
+  scale_y_continuous(limits = c(0, 4000))
 
-# Code for Q7 plot.
-fish2 <- BlackfootFish|>
-  mutate(length_scaled=rescale_01(length)) 
-  ggplot(fish2, 
-         aes(x=length_scaled))+
-    geom_histogram() +
-  labs(x = "Scaled Values of Fish Length (mm)") +
-  scale_y_continuous(limits = c(0,4000))
+fish2 <- BlackfootFish |> 
+  mutate(length_scaled = rescale_01(length)) 
+
+ggplot(fish2, aes(x = length_scaled)) + 
+  geom_histogram() + 
+  labs(x = "Scaled Values of Fish Length (mm)") + 
+  scale_y_continuous(limits = c(0, 4000))
 ```
 
 ::: callout-tip
