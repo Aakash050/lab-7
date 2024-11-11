@@ -1,9 +1,17 @@
 ---
 title: "Lab 7: Functions + Fish"
-author: "Your name here!"
-format: html
+author: "Aakash Kapadia"
+format: 
+  html:  
+    embed-resources: true
+    code-tools: true
+    toc: true
+    code-fold: true
 editor: source
-embed-resources: true
+execute:
+  warning: false
+  message: false
+  echo: True
 ---
 
 The goal of this lab is learn more about exploring missing data and writing
@@ -11,7 +19,9 @@ modular code.
 
 ```{r}
 #| label: setup
-
+library(tidyverse)
+library(here)
+BlackfootFish <-read_csv(here("data", "BlackfootFish.csv"))
 
 ```
 
@@ -38,20 +48,37 @@ measurement errors.
 + **How many observations have missing values?**
 + **What variable(s) have missing values present?**
 
+**1796 observations have missing values, and they're all found in weight.This can also be seen through looking directly at the table, where weight is not a part of the dataset, even though it's written there.**
+
 ::: callout-tip
 # You should use `across()`!
 :::
 
 ```{r}
 #| label: find-missing-values
+# Found sum(is.na) through the textbook, where this counts how many times NA values appear in rows. The missing count >0 filters the table to only include places where there is at least 1 NA.
+missing_table <- BlackfootFish |> 
+  summarise(across(everything(), 
+                   ~ sum(is.na(.)))) |> 
+  pivot_longer(everything(), names_to = "Variable", 
+               values_to = "Missing_Count") |> 
+  filter(Missing_Count > 0)
 
+print(missing_table)
+  
 ```
 
 **2. Create ONE thoughtful visualization that explores the frequency of missing values across the different years, sections, and trips.**
 
 ```{r}
 #| label: visual-of-missing-values-over-time
-
+BlackfootFish |>
+  filter(is.na(weight)) |>
+ggplot(BlackfootFish,
+       mapping=aes(x=year, 
+                   y=trip,
+                   color=section)) +
+  geom_jitter()
 ```
 
 ## Rescaling the Data
@@ -72,7 +99,7 @@ I might write the following `R` code to carry out the rescaling procedure for th
 #| echo: true
 #| eval: false
 
-fish <- fish |> 
+BlackfootFish <- BlackfootFish |> 
   mutate(length = (length - min(length, na.rm = TRUE)) / 
            (max(length, na.rm = TRUE) - min(length, na.rm = TRUE)), 
          weight = (weight - min(weight, na.rm = TRUE)) / 
@@ -83,7 +110,7 @@ This process of duplicating an action multiple times can make it difficult to
 understand the intent of the process. *Additionally, it can make it very difficult to spot mistakes.*
 
 **3. What is the mistake I made in the above rescaling code?**
-
+In the code above, you rescaled weight using length in the line min(length, na.rm = TRUE))). Here, you are rescaling weight according to minimum length, which doesn't necessarily correspond to minimum weight,  
 
 When you find yourself copy-pasting lines of code, it's time to write a
 function, instead!
@@ -95,7 +122,12 @@ function, instead!
 
 ```{r}
 #| label: write-rescale-function
-
+#Found information on the range function in the r help page
+rescale_01 <- function(x) {
+  stopifnot(is.numeric(x), length(x)>1)
+  range_vals <- range(x, na.rm=TRUE)
+  return((x - range_vals[1]) / (range_vals[2] - range_vals[1]))
+}
 ```
 
 ::: callout-tip
@@ -143,15 +175,21 @@ statement in order to create a `length_scaled` variable.
 
 ```{r}
 #| label: compare-original-with-rescaled-lengths
-
-fish |>  
-  ggplot(aes(x = length)) + 
+#| ncol: 2
+  ggplot(BlackfootFish,
+         aes(x = length)) + 
   geom_histogram(binwidth = 45) +
   labs(x = "Original Values of Fish Length (mm)") +
   scale_y_continuous(limits = c(0,4000))
 
 # Code for Q7 plot.
-
+fish2 <- BlackfootFish|>
+  mutate(length_scaled=rescale_01(length)) 
+  ggplot(fish2, 
+         aes(x=length_scaled))+
+    geom_histogram() +
+  labs(x = "Scaled Values of Fish Length (mm)") +
+  scale_y_continuous(limits = c(0,4000))
 ```
 
 ::: callout-tip
@@ -183,7 +221,15 @@ section of R for Data Science!
 
 ```{r}
 #| label: rescale-data-frame-function
-
+rescale_01 <- function(x) {
+  stopifnot(is.numeric(x), length(x)>1)
+  range_vals <- range(x, na.rm=TRUE)
+  return((x - range_vals[1]) / (range_vals[2] - range_vals[1]))
+}
+rescale_column <-function(df, group_vars) {
+  df |>
+  mutate(across({{group_vars}}, rescale_01))
+}
 ```
 
 **9. Use your `rescale_column()` function to rescale *both* the `length` and `weight` columns.**
@@ -194,5 +240,5 @@ I expect that you carry out this process by calling the `rescale_column()` funct
 
 ```{r}
 #| label: rescale-two-columns
-
+rescale_column(BlackfootFish, c(length,weight))
 ```
