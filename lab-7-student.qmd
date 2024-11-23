@@ -70,15 +70,35 @@ print(missing_table)
 
 **2. Create ONE thoughtful visualization that explores the frequency of missing values across the different years, sections, and trips.**
 
+**Revisions: I changed my graph of missing values compared to years, sections, and trips to a heat map (getting inspiration from Parker Mascott in the discord channel). There are a few reasons I did this. When researching heat maps, I realized that heatmaps make it really easy to identify patterns in large datasets (due to color gradients), and with 1796 observations, a heatmap would be more appropriate. Additionally, heatmaps allow for quick comparisons across different groups, allowing me to effectively plot years, sections, trips, and missing values.**
+
+**Changes I made: First, I changed my filter to a mutate on my is.na code, so that I could include missing values as a fill on my graph. Previously, I had only included na values on my graph, which allowed me to plot them, but didn't show the reader the difference between missing values and non missing values, only showing them missing values (frequency was missing). *Also included a group by to accomplish the mutate (as mutate works row by row). Then, to get the percent of missing values, I added up the total number of observations, using n(), and created a percent missing variable that used my missing and total number of values. Finally, I included this on my aes(mapping). To do so, I changed my line color = section to fill = percent_misssing_values, and included geom_tile(), which is the code for a heatmap. I also faceted by trip (first I tried faceting by section but realized I needed trip to split into 1 and 2, instead of r considering trip as a numeric variable and therefore giving me a scale from 0 - 2 by 0.5), to include this as well, and added a color scale to indicate to readers where missing values were more prevalent. I also added theme_minimal to clean up the graph, removing the gray space, and grid lines. Finally, I added labels, which I should've done earlier, to make the plot easier for the reader to understand.**
 ```{r}
 #| label: visual-of-missing-values-over-time
 BlackfootFish |>
-  filter(is.na(weight)) |>
+  group_by(year, section, trip) |>
+  mutate(missing_values = sum(if_any(everything(),
+                                     is.na)),
+         total=n(),
+         percent_missing_values = (missing_values/total)*100) |>
 ggplot(BlackfootFish,
        mapping=aes(x=year, 
-                   y=trip,
-                   color=section)) +
-  geom_jitter()
+                   y=section,
+                   fill=percent_missing_values)) +
+  geom_tile() +
+  facet_wrap(~ trip) +
+  #Found this in the r help section, fill refers to the percent of missing values. 
+  scale_fill_gradient(low = "Midnight Blue", 
+                      high = "Sky Blue",
+                      name = "Percent Missing (0 - 100)") +
+  labs(x = "Year",
+       y = "Section",
+       subtitle = "Trip",
+       title = "Heatmap of missing values vs years, sections, and trips") +
+  theme_minimal() +
+  theme(axis.title.y = element_text(angle = 90, 
+                                    hjust = 0.5),
+        axis.title.x = element_text(hjust = 0.5) )
 ```
 
 ## Rescaling the Data
@@ -172,7 +192,7 @@ Next, let's test the function on the `length` column of the `BlackfootFish` data
 This will require you to call your `rescale_01()` function within a `mutate()`
 statement in order to create a `length_scaled` variable.
 :::
-
+**Revisions: When looking back at the graphs, they had different scales but the graphs also looked different. This is because I didn't specify a bindwith in my scaled graph, meaning overall, I had a graph with the same data, but it looked different. By controlling how large my bins were (45/1000 = 0.045), the graphs now look the same. When creating graphs in the future, I can use bindwith for scaled graphs, diving by the scale to get what my new bindwith should be.**
 ```{r}
 #| label: compare-original-with-rescaled-lengths
 #| layout-ncol: 2
@@ -185,7 +205,7 @@ fish2 <- BlackfootFish |>
   mutate(length_scaled = rescale_01(length)) 
 
 ggplot(fish2, aes(x = length_scaled)) + 
-  geom_histogram() + 
+  geom_histogram(binwidth = 0.045) + 
   labs(x = "Scaled Values of Fish Length (mm)") + 
   scale_y_continuous(limits = c(0, 4000))
 ```
@@ -216,7 +236,7 @@ If you are struggling with this task, I recommend looking back over the
 [data frame functions](https://r4ds.hadley.nz/functions.html#data-frame-functions)
 section of R for Data Science!
 :::
-
+**Revisions: After looking over your feedback, I implemented function stops to check for inputs being a dataframe, and our columns being in our dataframe. I did this through the slides, where I found the setup for these arguments. I specifically didn't use the stopifnot as I wanted to include a message in case these weren't correct, but kept the stopisnot for our numerical checks as it allowed me to check both at once. The other change I made is to use the most modern version of across. I found the syntax for this in the textbook, where specifying the .names argument allows me to specify that I want the original measurements, and the scaled measurements. Whenever I want to compare data to a altered form of the same data, I plan to use this.**
 ```{r}
 #| label: rescale-data-frame-function
 rescale_01 <- function(x) {
@@ -225,8 +245,14 @@ rescale_01 <- function(x) {
   return((x - range_vals[1]) / (range_vals[2] - range_vals[1]))
 }
 rescale_column <-function(df, group_vars) {
+if(!is.data.frame(df)){
+    stop("Please provide a data frame input for the df argument")
+}  
+if(!all(group_vars %in% colnames(df))){
+    stop("The columns selected must be in our data frame")
+} 
   df |>
-  mutate(across({{group_vars}}, rescale_01))
+  mutate(across({{group_vars}}, rescale_01, .names = "{.col}_scaled"))
 }
 ```
 
@@ -238,5 +264,5 @@ I expect that you carry out this process by calling the `rescale_column()` funct
 
 ```{r}
 #| label: rescale-two-columns
-rescale_column(BlackfootFish, c(length,weight))
+rescale_column(BlackfootFish, c("length","weight"))
 ```
