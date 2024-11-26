@@ -1,15 +1,25 @@
 ---
 title: "Challenge 7: Incorporating Multiple Inputs"
 subtitle: "Functions + Fish"
-author: "Your name here!"
-format: html
+author: "Aakash Kapadia!"
+format: 
+  html:  
+    embed-resources: true
+    code-tools: true
+    toc: true
+    code-fold: true
 editor: source
-embed-resources: true
+execute:
+  warning: false
+  message: false
+  echo: True
 ---
 
 ```{r}
 #| label: setup
-
+library(tidyverse)
+library(here)
+BlackfootFish <-read_csv(here("data", "BlackfootFish.csv"))
 
 ```
 
@@ -25,7 +35,8 @@ $$\text{condition index} = \frac{weight}{length^3} \times 100$$
 
 ```{r}
 #| label: transform-data-to-have-correct-units
-
+BlackfootFish |>
+  mutate(length=0.1*length)
 ```
 
 **2. Collecting data of this sort can be very messy! Write a function that will replace unlikely `length` and `weight` measurements with `NA`. Your function should accept at least three inputs:**
@@ -39,17 +50,32 @@ $$\text{condition index} = \frac{weight}{length^3} \times 100$$
 ::: callout-tip
 If you are struggling with the structure of your function, I would suggest reading the [Mutating Function](https://r4ds.hadley.nz/functions.html#mutate-functions) from R4DS.
 :::
+**Revisions: Here, I changed a few things. To start with, I changed the name of my function, as clamp doesn't make as much sense as replace_outliers (which is literally what the code is doing.) Second, I added function stops, to check if the min value is less than the max value, and that the minimum and maximum values are numeric. These are used to make sure the reader understand if they have a valid input, and if they don't why they don't. Without this, they may get error messages that they don't understand. Finally, my main changes were to the actual function code. Here, I no longer need a data frame, as this is irrelevant for a function that only takes in vectors. Second, I changed the format of the code, as now I use the format of the clamp function from the textbook. When doing this I realized all I'm really doing is checking to see the minimum and maximum of a vector, and then changing outliers to NA. Knowing this, the clamp function worked.**
+
 
 ```{r}
 #| label: function-to-change-impossible-measurements-to-NA
+replace_outliers <- function(vector, min_val, max_val) {
 
+  stopifnot(is.numeric(min_val),is.numeric(max_val))
+  if (min_val > max_val){ 
+    stop("The minimum value cannot be greater than the maximum value.")
+}
+  #Found basic format for this from clamp function in textbook, then instead of replacing with minimum or maximum value, replace with NA. 
+  vector <- ifelse(vector < min_val | vector > max_val, 
+                   NA, 
+                   vector)
+}
 ```
 
 **3. After consulting the [Montana Record Table](https://fwp.mt.gov/fish/anglingData/records) for the four species of trout included in these data, I have conjectured that it is unlikely to have measurements for fish below 5 cm and above 80 cm in length or below 10 g and above 4,000 g in weight. Use your function to modify the `length` and `weight` columns of the `fish` dataset based on my cutoffs.**
 
+**Revisions: The code now works based on the function changes above. The only other change I made was the mutate the length and weight vector directly in the blackfootfish data, as this allows me to directly change the dataset, allowing me to get rid of NA values easily, and see exactly what changes I'm making. Learning that I can mutate variables based on functions I create allows me to make less df functions, and more direct vector functions, which are simpler, and easier to understand.**
 ```{r}
 #| label: modify-impossible-values-of-length-weight
-
+Blackfootfish |> 
+  mutate(length = replace_outliers(length, 5, 80),
+         weight = replace_outliers(weight,10,4000))
 ```
 
 **3. Write a function to calculate the condition index of a fish, given inputs of weight and length.**
@@ -62,7 +88,9 @@ dataset and variable names as inputs)!
 
 ```{r}
 #| label: condition-function
-
+condition_index_function <- function(weight, length) {
+  condition_index <- (weight / (length^3)) * 100
+}
 ```
 
 **4. Make a thoughtful visualization of how fish conditions have varied over the duration of this study.**
@@ -75,5 +103,15 @@ dataset and variable names as inputs)!
 
 ```{r}
 #| label: condition-indices-over-time
-
+BlackfootFish <- BlackfootFish |>
+  mutate(condition_index=condition_index_function(length,weight))
+ggplot(BlackfootFish, 
+       mapping=aes(x=year,
+                    y=condition_index, 
+                    color=section))+
+  geom_line()+
+  labs(x="Year",
+       y="",
+       color="species",
+       title="Condition index vs Year vs Section")
 ```
