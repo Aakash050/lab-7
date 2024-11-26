@@ -73,7 +73,7 @@ replace_outliers <- function(vector, min_val, max_val) {
 **Revisions: The code now works based on the function changes above. The only other change I made was the mutate the length and weight vector directly in the blackfootfish data, as this allows me to directly change the dataset, allowing me to get rid of NA values easily, and see exactly what changes I'm making. Learning that I can mutate variables based on functions I create allows me to make less df functions, and more direct vector functions, which are simpler, and easier to understand.**
 ```{r}
 #| label: modify-impossible-values-of-length-weight
-Blackfootfish |> 
+BlackfootFish |> 
   mutate(length = replace_outliers(length, 5, 80),
          weight = replace_outliers(weight,10,4000))
 ```
